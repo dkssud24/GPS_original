@@ -1,0 +1,26 @@
+library(bigstatsr)
+library(bigsnpr)
+library(dplyr)
+library(data.table)
+library(magrittr)
+library(R.utils)
+#snp_readBed("00_merge.bed")
+obj.bigSNP <- snp_attach("00_merge.rds")
+str(obj.bigSNP, max.level = 2, strict.width = "cut")
+G   <- obj.bigSNP$genotypes
+CHR <- obj.bigSNP$map$chromosome
+POS <- obj.bigSNP$map$physical.pos
+G2 <- snp_fastImputeSimple(G)
+NCORES <- nb_cores()
+sumstats <- bigreadr::fread2("
+
+#Confirmed the Summary statistic col names
+sumstats2 <- sumstats [ , c(1,3,2,4,5,7,8,9,10)]
+names(sumstats2) <- c("chr","rsid","pos","a0","a1","beta","beta_se","p","n_eff")
+map <- obj.bigSNP$map[-(2:3)]
+names(map) <- c("chr", "pos", "a0", "a1")
+info_snp <- snp_match(sumstats2, map)
+snp_list <- data.frame(info_snp$rsid)
+names(snp_list) <- c("snp_list")
+ write.table(snp_list,'11_FFR_infoSNP_hm3_snp_list.txt',quote=FALSE,row.names=FALSE,sep="\t")
+ 
