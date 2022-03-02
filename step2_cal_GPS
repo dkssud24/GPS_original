@@ -1,0 +1,57 @@
+library(bigstatsr)
+library(bigsnpr)
+library(dplyr)
+library(data.table)
+library(magrittr)
+library(R.utils)
+
+obj.bigSNP <- snp_attach("")
+G   <- obj.bigSNP$genotypes
+CHR <- obj.bigSNP$map$chromosome
+POS <- obj.bigSNP$map$physical.pos
+G2 <- snp_fastImputeSimple(G)
+
+NCORES <- nb_cores()
+
+sumstats <- bigreadr::fread2("")
+sumstats2 <- sumstats [ , c(1,3,2,4,5,7,8,9,10)]
+ names(sumstats2) <- c("chr","rsid","pos","a0","a1","beta","beta_se","p","n_eff")
+
+map <- obj.bigSNP$map[-(2:3)]
+names(map) <- c("chr", "pos", "a0", "a1")
+info_snp <- snp_match(sumstats2, map)
+
+NCORES <- nb_cores()
+setwd('')
+tmp <- tempfile(tmpdir = "tmp-data")
+on.exit(file.remove(paste0(tmp, ".sbk")), add = TRUE)
+corr <- NULL
+ld <- NULL
+fam.order <- NULL
+CHR <- map$chr
+chr <- map$chr
+POS <- map$pos
+POS2 <- snp_asGeneticPos(CHR, POS, dir = ".")
+corr0 <- NULL
+
+for (chr in 1:22) {
+    # Extract SNPs that are included in the chromosome
+    ind.chr <- which(info_snp$chr == chr)
+    ind.chr2 <- info_snp$`_NUM_ID_`[ind.chr]
+    # Calculate the LD
+    corr0 <- snp_cor(
+            G2,
+            ind.col = ind.chr2,
+            ncores = NCORES,
+            infos.pos = POS2[ind.chr2],
+            size = 3 / 1000
+        )
+    if (chr == 1) {
+        ld <- Matrix::colSums(corr0^2)
+        corr <- as_SFBM(corr0, tmp)
+    } else {
+        ld <- c(ld, Matrix::colSums(corr0^2))
+        corr$add_columns(corr0, nrow(corr))
+    }
+}
+
