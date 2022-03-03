@@ -22,5 +22,15 @@ names(map) <- c("chr", "pos", "a0", "a1")
 info_snp <- snp_match(sumstats2, map)
 snp_list <- data.frame(info_snp$rsid)
 names(snp_list) <- c("snp_list")
- write.table(snp_list,'11_FFR_infoSNP_hm3_snp_list.txt',quote=FALSE,row.names=FALSE,sep="\t")
+write.table(snp_list,'11_FFR_infoSNP_hm3_snp_list.txt',quote=FALSE,row.names=FALSE,sep="\t")
  
+obj.bigSNP <- snp_attach("") 
+G   <- obj.bigSNP$genotypes
+CHR <- obj.bigSNP$map$chromosome
+POS <- obj.bigSNP$map$physical.pos
+G2 <- snp_fastImputeSimple(G)
+
+beta_inf <- snp_ldpred2_inf(corr, df_beta, h2 = h2_est)
+ind.test <- 1:nrow(G2)
+dim(G2)
+pred_inf <- big_prodVec( G2, beta_inf, ind.row = ind.test, ind.col = info_snp$`_NUM_ID_`)
